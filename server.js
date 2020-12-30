@@ -1,18 +1,20 @@
 const express = require("express");
-const bodyParser = require("body-parser");
+const uuid = require("uuid");
 const path = require("path");
 const http = require("http");
 const socketio = require("socket.io");
+const { Chess } = require("chess.js");
 
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
 const PORT = process.env.PORT || 3000;
-const playingRoom = "playing-room";
+
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+var games = {};
 io.on("connection", (socket) => {
     console.log("A new user has connected.");
     socket.join("lobby-room");
@@ -23,6 +25,7 @@ io.on("connection", (socket) => {
         lobby = Array.from(io.sockets.adapter.rooms.get("lobby-room"));
         let socketId = lobby[Math.floor(Math.random()*lobby.length)];
         let randomSocket = io.sockets.sockets.get(socketId);
+        let playingRoom = uuid.v4();
 
         randomSocket.leave("lobby-room");
         
@@ -36,12 +39,25 @@ io.on("connection", (socket) => {
         }
         else{
             io.to(playingRoom).emit("play", playingRoom, randomSocket.id);
-        }  
+        }
+        games[playingRoom] = new Chess();
+        
     }
     
-    socket.on("move", newPos => {
+    socket.on("move", (moveObj, oldPos, piece) => {
         console.log("A move was played");
-        io.emit("change",newPos); 
+        var currentRoom = Array.from(socket.rooms)[Array.from(socket.rooms).length - 1];
+        if((piece === "wP" && moveObj.to[moveObj.to.length -1] == "8") || (piece === "bP" && moveObj.to[moveObj.to.length-1] == "1")){
+            moveObj.promotion = "q";
+        }
+        var status = games[currentRoom].move(moveObj)
+        console.log(moveObj, status);
+        if (status === null){
+            console.log(games[currentRoom].moves({square : moveObj.from}));
+        }
+
+        io.to(currentRoom).emit("change", games[currentRoom].fen());
+         
     });
     
     

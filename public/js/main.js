@@ -2,7 +2,10 @@ var socket = io();
 var board;
 
 var onDrop = (source, target, piece, newPos, oldPos, orn) => {
-    socket.emit("move", Chessboard.objToFen(newPos));
+    socket.emit("move", {from: source, to: target}, oldPos, piece);
+}
+var onDragStart = (source, piece, position, orn) => {
+    return (piece[0] == orn[0]);
 }
 
 socket.on("change", (newPos) => {
@@ -14,7 +17,8 @@ socket.on("play", (room, id) => {
         position: "start",
         draggable: true,
         dropOffBoard: "snapback",
-        onDrop: onDrop
+        onDrop: onDrop,
+        onDragStart: onDragStart
     }
     if(id === socket.id){
         config.orientation = "white";
