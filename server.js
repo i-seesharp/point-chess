@@ -15,6 +15,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 var games = {};
+const get_piece_positions = (game, piece) => {
+    return [].concat(...game.board()).map((p, index) => {
+      if (p !== null && p.type === piece.type && p.color === piece.color) {
+        return index;
+      }
+    }).filter(Number.isInteger).map((piece_index) => {
+      const row = 'abcdefgh'[piece_index % 8]
+      const column = Math.ceil((64 - piece_index) / 8);
+      return row + column;
+    });
+  }
 io.on("connection", (socket) => {
     console.log("A new user has connected.");
     socket.join("lobby-room");
@@ -55,8 +66,13 @@ io.on("connection", (socket) => {
         if (status === null){
             console.log(games[currentRoom].moves({square : moveObj.from}));
         }
+        
+        var checkObj = {
+            inCheck: games[currentRoom].in_check(),
+            kingSquare: get_piece_positions(games[currentRoom], {type: "k", color:games[currentRoom].turn()})
+        }
 
-        io.to(currentRoom).emit("change", games[currentRoom].fen());
+        io.to(currentRoom).emit("change", games[currentRoom].fen(), oldPos, moveObj, checkObj);
          
     });
     
