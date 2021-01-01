@@ -1,0 +1,21 @@
+[Event "Rated Rapid game"]
+[Site "https://lichess.org/9IraTTma"]
+[Date "2020.12.31"]
+[White "Valery37"]
+[Black "Shepard2001"]
+[Result "0-1"]
+[UTCDate "2020.12.31"]
+[UTCTime "06:56:19"]
+[WhiteElo "2205"]
+[BlackElo "2191"]
+[WhiteRatingDiff "-6"]
+[BlackRatingDiff "+7"]
+[Variant "Standard"]
+[TimeControl "600+0"]
+[ECO "C43"]
+[Opening "Russian Game: Modern Attack, Symmetrical Variation"]
+[Termination "Normal"]
+
+1. e4 e5 2. Bc4 h6 3. Nf3 a6 4. Nc3 h5
+5. d3 c6 6. Ng5 Ke7 7. Nf3 d6 8. d4 exd4
+9. Nxd4 Ke8
