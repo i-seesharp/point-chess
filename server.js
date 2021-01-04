@@ -84,6 +84,13 @@ io.on("connection", (socket) => {
         }
 
         io.to(currentRoom).emit("change", games[currentRoom].fen(), oldPos, moveObj, checkObj);
+        if(games[currentRoom].game_over()){
+            if(games[currentRoom].in_checkmate()){
+                io.to(currentRoom).emit("checkmate", socket.id);
+            }else{
+                io.to(currentRoom).emit("draw-over");
+            }
+        }
          
     });
 

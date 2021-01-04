@@ -101,3 +101,26 @@ socket.on("game-over", (reason, winner) => {
 
 });
 
+socket.on("checkmate", (winner) => {
+    var endMessage = "";
+    if(winner != socket.id){
+        endMessage = "<h1>Game Over! You Lost</h1>";
+    }else{
+        endMessage = "<h1>Game Over! You Win</h1>";
+    }
+    board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
+    var newDiv = document.createElement("div");
+    newDiv.innerHTML = endMessage;
+    var parentDiv = document.querySelector(".container");
+    parentDiv.insertBefore(newDiv, document.getElementById("board"));
+});
+
+socket.on("draw-over", () => {
+    var endMessage = "<h1>Game Drawn! 1/2 - 1/2</h1>";
+    board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
+    var newDiv = document.createElement("div");
+    newDiv.innerHTML = endMessage;
+    var parentDiv = document.querySelector(".container");
+    parentDiv.insertBefore(newDiv, document.getElementById("board"));
+});
+
