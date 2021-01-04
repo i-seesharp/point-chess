@@ -2,8 +2,15 @@ const express = require("express");
 const uuid = require("uuid");
 const path = require("path");
 const http = require("http");
+const session = require("express-session");
+const ejs = require("ejs");
+const flash = require("connect-flash");
+const bodyParser = require("body-parser");
 const socketio = require("socket.io");
 const { Chess } = require("chess.js");
+const passport = require("passport");
+
+const boardConfig = require(path.join(__dirname, "config", "board-config.js"));
 
 const app = express();
 const server = http.createServer(app);
@@ -13,21 +20,25 @@ const PORT = process.env.PORT || 3000;
 
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.set("view engine", "ejs");
+app.use(bodyParser.urlencoded({ extended : true }));
+
+app.use(session({
+    secret: "pOiNtChEsS",
+    resave: true,
+    saveUninitialized: true
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use(flash());
 
 var games = {};
-const get_piece_positions = (game, piece) => {
-    return [].concat(...game.board()).map((p, index) => {
-      if (p !== null && p.type === piece.type && p.color === piece.color) {
-        return index;
-      }
-    }).filter(Number.isInteger).map((piece_index) => {
-      const row = 'abcdefgh'[piece_index % 8]
-      const column = Math.ceil((64 - piece_index) / 8);
-      return row + column;
-    });
-  }
+
+
 io.on("connection", (socket) => {
-    console.log("A new user has connected.");
+    console.log("A new user has joined the lobby.");
     socket.join("lobby-room");
     var lobby = Array.from(io.sockets.adapter.rooms.get("lobby-room"));
     
@@ -69,14 +80,76 @@ io.on("connection", (socket) => {
         
         var checkObj = {
             inCheck: games[currentRoom].in_check(),
-            kingSquare: get_piece_positions(games[currentRoom], {type: "k", color:games[currentRoom].turn()})
+            kingSquare: boardConfig.get_position(games[currentRoom], {type: "k", color:games[currentRoom].turn()})
         }
 
         io.to(currentRoom).emit("change", games[currentRoom].fen(), oldPos, moveObj, checkObj);
          
     });
+
+    socket.on("draw", () => {
+        var gameRoom = Array.from(socket.rooms)[1];
+        var playersInRoom = Array.from(io.sockets.adapter.rooms.get(gameRoom));
+        
+        for(var i = 0; playersInRoom.length; i++){
+            if(playersInRoom[i] !== Array.from(socket.rooms)[0]){
+                break
+            }
+        }
+        var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+        opponentSocket.emit("game-over", "draw", "no-winner");
+        socket.emit("game-over", "draw", "no-winner");
+
+    });
+
+    socket.on("resign", () => {
+        var gameRoom = Array.from(socket.rooms)[1];
+        var playersInRoom = Array.from(io.sockets.adapter.rooms.get(gameRoom));
+        
+        for(var i = 0; playersInRoom.length; i++){
+            if(playersInRoom[i] !== Array.from(socket.rooms)[0]){
+                break
+            }
+        }
+        var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+        opponentSocket.emit("game-over", "resignation", opponentSocket.id);
+        socket.emit("game-over", "resignation", opponentSocket.id);
+    });
     
-    
+    socket.on("disconnecting", () => {
+        var roomLeft = Array.from(socket.rooms)[1];
+        if(roomLeft !== "lobby-room"){
+            var playersInRoom = Array.from(io.sockets.adapter.rooms.get(roomLeft));
+            var alone = true;
+            for(var i = 0; i < playersInRoom.length; i++){
+                if(playersInRoom[i] !== Array.from(socket.rooms)[0]){
+                    alone = false;
+                    break;
+                }
+            }
+            if(alone !== true){
+                var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+                opponentSocket.emit("game-over", "abandonment", opponentSocket.id);
+                console.log("A player left their game.");
+                console.log(games);
+            }else{
+                delete games[roomLeft];
+                console.log(games);
+            }
+       
+        }else{
+            console.log("A player left the lobby.");
+        }
+ 
+    });
+});
+
+app.get("/", (req, res)=>{
+    res.render("index");
+});
+
+app.get("/play", (req, res) => {
+    res.render("play");
 });
 
 server.listen(PORT, () => {
