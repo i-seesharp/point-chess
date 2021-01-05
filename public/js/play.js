@@ -15,6 +15,10 @@ socket.on("change", (newPos, oldPos, moveObj, checkObj) => {
     var factorX = Chessboard.objToFen(Chessboard.fenToObj(newPos));
     var factorY = Chessboard.objToFen(Chessboard.fenToObj(oldPos));
     if (factorX !== factorY){
+        var drawItems = document.querySelectorAll(".draw_offer");
+        for(var i =0; i < drawItems.length; i++){
+            drawItems[i].style.visibility = "hidden";
+        }
         console.log(newPos);
         console.log(oldPos);
         
@@ -57,11 +61,10 @@ socket.on("play", (room, id) => {
         config.orientation = "black";
     }
     board = Chessboard("board", config);
-    var drawBtn = document.getElementById("draw_btn");
-    var resignBtn = document.getElementById("resign_btn");
+    showButtons();
 
-    drawBtn.style.visibility = "visible";
-    resignBtn.style.visibility = "visible";
+    drawBtn = document.getElementById("draw_btn");
+    resignBtn = document.getElementById("resign_btn");
 
     drawBtn.addEventListener("click", () => {
         socket.emit("draw");
@@ -94,11 +97,36 @@ socket.on("game-over", (reason, winner) => {
         endMessage = "<h1>Game Drawn! 1/2 - 1/2</h1>";
     }
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
-    var newDiv = document.createElement("div");
-    newDiv.innerHTML = endMessage;
-    var parentDiv = document.querySelector(".container");
-    parentDiv.insertBefore(newDiv, document.getElementById("board"));
+    var messageDiv = document.getElementById("message");
+    messageDiv.innerHTML = endMessage;
+    
+    hideButtons();
 
+});
+
+socket.on("draw-offer", () => {
+    var drawItems = document.querySelectorAll(".draw_offer");
+    for(var i = 0; i < drawItems.length; i++){
+        drawItems[i].style.visibility = "visible";
+    }
+
+    var acceptBtn = document.getElementById("accept_draw");
+    var rejectBtn = document.getElementById("reject_draw");
+
+    acceptBtn.addEventListener("click", () => {
+        var drawItems = document.querySelectorAll(".draw_offer");
+        for(var i = 0; i < drawItems.length; i++){
+            drawItems[i].style.visibility = "hidden";
+        }
+        socket.emit("accept-draw");
+    });
+
+    rejectBtn.addEventListener("click", () => {
+        var drawItems = document.querySelectorAll(".draw_offer");
+        for(var i = 0; i < drawItems.length; i++){
+            drawItems[i].style.visibility = "hidden";
+        }
+    });
 });
 
 socket.on("checkmate", (winner) => {
@@ -109,18 +137,34 @@ socket.on("checkmate", (winner) => {
         endMessage = "<h1>Game Over! You Win</h1>";
     }
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
-    var newDiv = document.createElement("div");
-    newDiv.innerHTML = endMessage;
-    var parentDiv = document.querySelector(".container");
-    parentDiv.insertBefore(newDiv, document.getElementById("board"));
+    var messageDiv = document.getElementById("message");
+    messageDiv.innerHTML = endMessage;
+
+    hideButtons();
 });
 
 socket.on("draw-over", () => {
     var endMessage = "<h1>Game Drawn! 1/2 - 1/2</h1>";
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
-    var newDiv = document.createElement("div");
-    newDiv.innerHTML = endMessage;
-    var parentDiv = document.querySelector(".container");
-    parentDiv.insertBefore(newDiv, document.getElementById("board"));
+    var messageDiv = document.getElementById("message");
+    messageDiv.innerHTML = endMessage;
+    hideButtons();
+    
 });
+
+let hideButtons = () => {
+    var drawBtn = document.getElementById("draw_btn");
+    var resignBtn = document.getElementById("resign_btn");
+
+    drawBtn.style.visibility = "hidden";
+    resignBtn.style.visibility = "hidden";
+}
+
+let showButtons = () => {
+    var drawBtn = document.getElementById("draw_btn");
+    var resignBtn = document.getElementById("resign_btn");
+
+    drawBtn.style.visibility = "visible";
+    resignBtn.style.visibility = "visible";
+}
 

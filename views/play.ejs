@@ -11,9 +11,14 @@
     </head>
     <body>
         <div class="container">
+            <div id="message"></div>
             <div id="board" style="width: 400px"></div>
             <button id="draw_btn" style="visibility:hidden;">Draw</button>
             <button id="resign_btn" style="visibility:hidden;">Resign</button>
+
+            <p class="draw_offer" style="visibility: hidden;">Your oppenent has offered a draw. Accept?</p>
+            <button class="draw_offer" id="accept_draw" style="visibility:hidden;">Accept</button>
+            <button class="draw_offer" id="reject_draw" style="visibility:hidden;">Reject</button>
         </div>
         <script src="js/chessboard-1.0.0.min.js"></script>
         <script src="js/play.js"></script>

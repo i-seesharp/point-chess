@@ -62,7 +62,10 @@ io.on("connection", (socket) => {
         else{
             io.to(playingRoom).emit("play", playingRoom, randomSocket.id);
         }
-        games[playingRoom] = new Chess();
+        games[playingRoom] = {
+            game: new Chess(),
+            isOver: false
+        };
         
     }
     
@@ -72,20 +75,21 @@ io.on("connection", (socket) => {
         if((piece === "wP" && moveObj.to[moveObj.to.length -1] == "8") || (piece === "bP" && moveObj.to[moveObj.to.length-1] == "1")){
             moveObj.promotion = "q";
         }
-        var status = games[currentRoom].move(moveObj)
+        var status = games[currentRoom].game.move(moveObj)
         console.log(moveObj, status);
         if (status === null){
-            console.log(games[currentRoom].moves({square : moveObj.from}));
+            console.log(games[currentRoom].game.moves({square : moveObj.from}));
         }
         
         var checkObj = {
-            inCheck: games[currentRoom].in_check(),
-            kingSquare: boardConfig.get_position(games[currentRoom], {type: "k", color:games[currentRoom].turn()})
+            inCheck: games[currentRoom].game.in_check(),
+            kingSquare: boardConfig.get_position(games[currentRoom].game, {type: "k", color:games[currentRoom].game.turn()})
         }
 
-        io.to(currentRoom).emit("change", games[currentRoom].fen(), oldPos, moveObj, checkObj);
-        if(games[currentRoom].game_over()){
-            if(games[currentRoom].in_checkmate()){
+        io.to(currentRoom).emit("change", games[currentRoom].game.fen(), oldPos, moveObj, checkObj);
+        if(games[currentRoom].game.game_over()){
+            games[currentRoom].isOver = true;
+            if(games[currentRoom].game.in_checkmate()){
                 io.to(currentRoom).emit("checkmate", socket.id);
             }else{
                 io.to(currentRoom).emit("draw-over");
@@ -104,9 +108,15 @@ io.on("connection", (socket) => {
             }
         }
         var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
-        opponentSocket.emit("game-over", "draw", "no-winner");
-        socket.emit("game-over", "draw", "no-winner");
+        opponentSocket.emit("draw-offer");
+        
 
+    });
+
+    socket.on("accept-draw", () => {
+        var gameRoom = Array.from(socket.rooms)[1];
+        games[gameRoom].isOver = true;
+        io.to(gameRoom).emit("draw-over");
     });
 
     socket.on("resign", () => {
@@ -119,6 +129,7 @@ io.on("connection", (socket) => {
             }
         }
         var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+        games[gameRoom].isOver = true;
         opponentSocket.emit("game-over", "resignation", opponentSocket.id);
         socket.emit("game-over", "resignation", opponentSocket.id);
     });
@@ -136,8 +147,11 @@ io.on("connection", (socket) => {
             }
             if(alone !== true){
                 var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
-                opponentSocket.emit("game-over", "abandonment", opponentSocket.id);
-                console.log("A player left their game.");
+                if(!games[roomLeft].isOver){
+                    opponentSocket.emit("game-over", "abandonment", opponentSocket.id);
+                    console.log("A player left their game.");
+                }
+                
                 console.log(games);
             }else{
                 delete games[roomLeft];
