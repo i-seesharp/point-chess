@@ -12,6 +12,9 @@ const passport = require("passport");
 
 const boardConfig = require(path.join(__dirname, "config", "board-config.js"));
 
+const loginRouter = require(path.join(__dirname, "routes", "login"));
+const registerRouter = require(path.join(__dirname, "routes", "register"));
+
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
@@ -25,14 +28,25 @@ app.use(bodyParser.urlencoded({ extended : true }));
 
 app.use(session({
     secret: "pOiNtChEsS",
-    resave: true,
-    saveUninitialized: true
+    resave: false,
+    saveUninitialized: false
 }));
 
+app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(flash());
+require(path.join(__dirname, "config", "passport-config.js"))(passport);
+
+app.use((req, res, next) => {
+    res.locals.user = req.user;
+    next();
+});
+
+app.use("/login", loginRouter);
+app.use("/register", registerRouter);
+
+
 
 var games = {};
 
@@ -165,8 +179,17 @@ io.on("connection", (socket) => {
     });
 });
 
+app.get("/dashboard", (req, res) => {
+    console.log("Dashboard Attempt");
+    if(req.isAuthenticated()){
+        res.render("index");
+    }else{
+        res.redirect("/login");
+    }
+});
+
 app.get("/", (req, res)=>{
-    res.render("index");
+    res.redirect("/dashboard");
 });
 
 app.get("/play", (req, res) => {
