@@ -14,6 +14,7 @@ const boardConfig = require(path.join(__dirname, "config", "board-config.js"));
 
 const loginRouter = require(path.join(__dirname, "routes", "login"));
 const registerRouter = require(path.join(__dirname, "routes", "register"));
+const logoutRouter = require(path.join(__dirname, "routes", "logout"));
 
 const app = express();
 const server = http.createServer(app);
@@ -29,7 +30,10 @@ app.use(bodyParser.urlencoded({ extended : true }));
 app.use(session({
     secret: "pOiNtChEsS",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie : {
+        maxAge: 1000* 60 * 60 *24 * 365
+    }
 }));
 
 app.use(flash());
@@ -40,16 +44,16 @@ require(path.join(__dirname, "config", "passport-config.js"))(passport);
 
 app.use((req, res, next) => {
     res.locals.user = req.user;
+    res.locals.errorMsg = req.flash("error");
+    res.locals.successMsg = req.flash("success_msg");
     next();
 });
 
 app.use("/login", loginRouter);
 app.use("/register", registerRouter);
-
-
+app.use("/logout", logoutRouter);
 
 var games = {};
-
 
 io.on("connection", (socket) => {
     console.log("A new user has joined the lobby.");

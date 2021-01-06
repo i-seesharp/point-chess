@@ -13,7 +13,6 @@ var passportStrategy = (passport) => {
             if (err) throw err;
             var dbo = db.db("point-chess");
             var query = {username : username};
-            console.log("Reached");
 
             dbo.collection("users").findOne(query, (err, user) => {
                 if (err) return done(err);
@@ -23,11 +22,8 @@ var passportStrategy = (passport) => {
                     bcrypt.compare(password, user.password, (err, res) => {
                         if (err) throw err;
                         if(res == true){
-                            console.log("correct pass");
-                            console.log(user);
                             return done(null, user);
                         }else{
-                            console.log("here");
                             return done(null, false, {message: "Incorrect Password"});
                         }
                     });
@@ -38,8 +34,6 @@ var passportStrategy = (passport) => {
     }));
 
     passport.serializeUser((user, done) => {
-        console.log("serialize");
-        console.log(user);
         return done(null, user._id);
     });
 
@@ -51,8 +45,6 @@ var passportStrategy = (passport) => {
             console.log("Query : ", query);
             dbo.collection("users").findOne(query, (err, user) => {
                 if (err) throw err;
-                console.log("deserialize");
-                console.log(user)
                 return done(null, user);
             });
         });
