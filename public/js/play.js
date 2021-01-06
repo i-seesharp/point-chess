@@ -2,6 +2,8 @@ var socket = io();
 var board = null;
 var fromSquare = null;
 var toSquare = null;
+var currRed = [];
+
 
 var onDrop = (source, target, piece, newPos, oldPos, orn) => {
     socket.emit("move", {from: source, to: target}, Chessboard.objToFen(oldPos), piece);
@@ -10,6 +12,9 @@ var onDragStart = (source, piece, position, orn) => {
     return (piece[0] == orn[0]);
 }
 
+socket.on("connect", () => {
+    socket.emit("my-name", document.getElementById("my_name").innerHTML);
+});
 socket.on("change", (newPos, oldPos, moveObj, checkObj) => {
     board.position(newPos);
     var factorX = Chessboard.objToFen(Chessboard.fenToObj(newPos));
@@ -36,16 +41,19 @@ socket.on("change", (newPos, oldPos, moveObj, checkObj) => {
         }
         if(checkObj.inCheck){
             kingSquare = document.querySelector("#board .square-"+checkObj.kingSquare);
-            kingSquare.style.background = "rgba(255,0,0,0.4)";
+            kingSquare.style.background = "rgba(255,0,0,1.0)";
+            currRed.push(kingSquare);
         }
         else{
-            kingSquare = document.querySelector("#board .square-"+checkObj.kingSquare);
-            kingSquare.style.background = "";
+            for(var i=0; i < currRed.length; i++){
+                currRed[i].style.background = "";
+            }
+            currRed = [];
         }
     }
 
 });
-socket.on("play", (room, id) => {
+socket.on("play", (room, id, whiteName, blackName) => {
     console.log("In room ", room);
     let config = {
         position: "start",
@@ -56,9 +64,11 @@ socket.on("play", (room, id) => {
     }
     if(id === socket.id){
         config.orientation = "white";
+        showNames(whiteName, blackName);
     }
     else{
         config.orientation = "black";
+        showNames(blackName, whiteName);
     }
     board = Chessboard("board", config);
     showButtons();
@@ -166,5 +176,14 @@ let showButtons = () => {
 
     drawBtn.style.visibility = "visible";
     resignBtn.style.visibility = "visible";
+}
+
+let showNames = (me, them) => {
+    var myNameElem = document.getElementById("my-name");
+    var oppNameElem = document.getElementById("opponent-name");
+    myNameElem.innerHTML = me;
+    oppNameElem.innerHTML = them;
+    myNameElem.style.visibility = "visible";
+    oppNameElem.style.visibility = "visible";
 }
 

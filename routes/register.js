@@ -50,14 +50,12 @@ router.post("/", (req, res) => {
             dbo.collection("users").findOne({username: username}, (err, user) => {
                 if (err) throw err;
                 if(user){
-                    console.log("I was here");
                     db.close();
                     req.flash("error","Username has already been taken.");
                     res.redirect("/register");
                 }else{
                     dbo.collection("users").insertOne(newUser, (err, result) => {
                         if (err) throw err;
-                        console.log("I was here!")
                         db.close();
                         req.flash("success_msg", "Your account has been created.");
                         res.redirect("/login");
