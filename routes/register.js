@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const client = require("mongodb").MongoClient;
 const bcrypt = require("bcryptjs");
+const ratings = require("../bin/ratings.js");
 const url = "mongodb://localhost:27017/"
 
 router.get("/", (req, res) => {
@@ -56,9 +57,20 @@ router.post("/", (req, res) => {
                 }else{
                     dbo.collection("users").insertOne(newUser, (err, result) => {
                         if (err) throw err;
-                        db.close();
-                        req.flash("success_msg", "Your account has been created.");
-                        res.redirect("/login");
+                        var newPlayer = ratings.makePlayer();
+                        var ratingObject = {
+                            username: username,
+                            rating: newPlayer.getRating(),
+                            rd: newPlayer.getRd(),
+                            vol: newPlayer.getVol()
+                        }
+                        dbo.collection("ratings").insertOne(ratingObject, (err, result1) => {
+                            if (err) throw err;
+                            db.close();
+                            req.flash("success_msg", "Your account has been created.");
+                            res.redirect("/login");
+                        });
+                        
                     });
                 }
             });

@@ -7,7 +7,6 @@ const ejs = require("ejs");
 const flash = require("connect-flash");
 const bodyParser = require("body-parser");
 const socketio = require("socket.io");
-const { Chess } = require("chess.js");
 const passport = require("passport");
 
 const loginRouter = require(path.join(__dirname, "routes", "login"));
@@ -53,8 +52,6 @@ app.use("/logout", logoutRouter);
 
 const socketCommunication = require(path.join(__dirname, "bin", "sockets.js"));
 socketCommunication(io);
-
-
 
 app.get("/dashboard", (req, res) => {
     console.log("Dashboard Attempt");

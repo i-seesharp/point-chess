@@ -3,6 +3,10 @@ const socketio = require("socket.io");
 const uuid = require("uuid");
 const path = require("path");
 const boardConfig = require(path.join("..", "config", "board-config.js"));
+const client = require("mongodb").MongoClient;
+const { SSL_OP_EPHEMERAL_RSA } = require("constants");
+const url = "mongodb://localhost:27017/";
+const ratings = require(path.join(__dirname, "ratings.js"));
 
 
 var socketCommunication = (io) => {
@@ -44,7 +48,47 @@ var socketCommunication = (io) => {
             }
         });
         
-        
+        socket.on("get-ratings", () => {
+            var username = idToName[socket.id];
+            var rating = 1500;
+            var gameRoom = Array.from(socket.rooms)[1];
+            var playersInRoom = Array.from(io.sockets.adapter.rooms.get(gameRoom));
+            var opponentSocketId;
+            for(var i=0; i < playersInRoom.length; i++){
+                if (playersInRoom[i] != socket.id){
+                    opponentSocketId = playersInRoom[i];
+                    break;
+                }
+            }
+            var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+            client.connect(url, (err, db) => {
+                if (err) throw err;
+                var dbo = db.db("point-chess");
+                var query = {username: username};
+
+                dbo.collection("ratings").findOne(query, (err, ratingObj) => {
+                    if (err) throw err;
+                    if (!ratingObj){
+                        throw new Error("This user has no rating object.");
+                    }else{
+                        rating = ratingObj.rating;
+                        socket.emit("rating", rating, "my-name");
+                    }
+                });
+                
+                dbo.collection("ratings").findOne({username: idToName[opponentSocketId]}, (err, ratingObj) => {
+                    if (err) throw err;
+                    if (!ratingObj){
+                        throw new Error("This user has no rating object.");
+                    }else{
+                        rating = ratingObj.rating;
+                        socket.emit("rating", rating, "opponent-name");
+                    }
+                });
+                
+            });
+            
+        });
     
         socket.on("move", (moveObj, oldPos, piece) => {
             console.log("A move was played");
@@ -110,6 +154,38 @@ var socketCommunication = (io) => {
             opponentSocket.emit("game-over", "resignation", opponentSocket.id);
             socket.emit("game-over", "resignation", opponentSocket.id);
         });
+
+        socket.on("update-ratings", (myStatus) => {
+            var username = idToName[socket.id];
+            var gameRoom = Array.from(socket.rooms)[1];
+            var playersInRoom = Array.from(io.sockets.adapter.rooms.get(gameRoom));
+            console.log("here");
+            for(var i = 0; playersInRoom.length; i++){
+                if(playersInRoom[i] !== Array.from(socket.rooms)[0]){
+                    break
+                }
+            }
+            var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
+            var oppUsername = idToName[opponentSocket.id];
+            client.connect(url, (err, db) => {
+                if (err) throw err;
+                var dbo = db.db("point-chess");
+                var query = {username: username};
+
+                dbo.collection("ratings").findOne(query, (err, ratingObj) => {
+                    if (err) throw err;
+                    var player = ratings.makePlayer(ratingObj.rating, ratingObj.rd, ratingObj.vol);
+                    dbo.collection("ratings").findOne({username: oppUsername}, (err, obj) => {
+                        if (err) throw err;
+                        console.log("made it here");
+                        var opp = ratings.makePlayer(obj.rating, obj.rd, obj.vol);
+                        ratings.updateRatings([[player, opp, myStatus]]);
+                        socket.emit("new-ratings", Math.floor(player.getRating()), Math.floor(opp.getRating()));
+                        db.close();
+                    });
+                });
+            });
+        });
         
         socket.on("disconnecting", () => {
             var roomLeft = Array.from(socket.rooms)[1];
@@ -125,6 +201,7 @@ var socketCommunication = (io) => {
                 if(alone !== true){
                     var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
                     if(!games[roomLeft].isOver){
+                        games[roomLeft].isOver = true;
                         opponentSocket.emit("game-over", "abandonment", opponentSocket.id);
                         console.log("A player left their game.");
                     }

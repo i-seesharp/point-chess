@@ -83,34 +83,45 @@ socket.on("play", (room, id, whiteName, blackName) => {
     resignBtn.addEventListener("click", () => {
         socket.emit("resign");
     });
+    socket.emit("get-ratings");
 });
+
+socket.on("rating", (rating, elementId) => {
+    var ratingString = "(" + rating + ")";
+    document.getElementById(elementId).innerHTML += ratingString;
+})
 
 socket.on("game-over", (reason, winner) => {
     var endMessage = "";
+    var myStatus;
     if(reason == "abandonment"){
         console.log("Opponent Left the Game.");
         endMessage = "<h1>You Win! Your opponent left the game</h1>";
+        myStatus = 1;
         
     }
     else if(reason == "resignation"){
         if(winner == socket.id){
             console.log("Opponent Resigned.");
             endMessage = "<h1>You Win! Your opponent has resigned! </h1>";
+            myStatus = 1;
         }else{
             console.log("You resigned.");
             endMessage = "<h1>You Lost! You resigned </h1>";
+            myStatus = 0;
         }
         
     }
     else{
         console.log("Game Drawn.");
         endMessage = "<h1>Game Drawn! 1/2 - 1/2</h1>";
+        myStatus = 0.5;
     }
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
     var messageDiv = document.getElementById("message");
     messageDiv.innerHTML = endMessage;
     
-    hideButtons();
+    hideButtons(myStatus);
 
 });
 
@@ -141,33 +152,44 @@ socket.on("draw-offer", () => {
 
 socket.on("checkmate", (winner) => {
     var endMessage = "";
+    var myStatus;
     if(winner != socket.id){
         endMessage = "<h1>Game Over! You Lost</h1>";
+        myStatus = 0;
     }else{
         endMessage = "<h1>Game Over! You Win</h1>";
+        myStatus = 1;
     }
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
     var messageDiv = document.getElementById("message");
     messageDiv.innerHTML = endMessage;
 
-    hideButtons();
+    hideButtons(myStatus);
 });
 
 socket.on("draw-over", () => {
     var endMessage = "<h1>Game Drawn! 1/2 - 1/2</h1>";
+    var myStatus = 0.5;
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
     var messageDiv = document.getElementById("message");
     messageDiv.innerHTML = endMessage;
-    hideButtons();
+    hideButtons(myStatus);
     
 });
 
-let hideButtons = () => {
+socket.on("new-ratings", (myRating, oppRating) => {
+    console.log("My New Rating :", myRating);
+    console.log("Opponent New Rating :", oppRating);
+})
+
+let hideButtons = (myStatus) => {
     var drawBtn = document.getElementById("draw_btn");
     var resignBtn = document.getElementById("resign_btn");
 
     drawBtn.style.visibility = "hidden";
     resignBtn.style.visibility = "hidden";
+
+    socket.emit("update-ratings", myStatus);
 }
 
 let showButtons = () => {
