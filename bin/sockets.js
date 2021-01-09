@@ -7,6 +7,7 @@ const client = require("mongodb").MongoClient;
 const { SSL_OP_EPHEMERAL_RSA } = require("constants");
 const url = "mongodb://localhost:27017/";
 const ratings = require(path.join(__dirname, "ratings.js"));
+const storeGame = require(path.join(__dirname, "store.js"));
 
 
 var socketCommunication = (io) => {
@@ -33,6 +34,7 @@ var socketCommunication = (io) => {
                 socket.join(playingRoom);
     
                 let randomNumber = Math.floor(Math.random()*2);
+                var idArray = [socket.id, randomSocket.id];
                 
                 if (randomNumber === 0){
                     io.to(playingRoom).emit("play", playingRoom, socket.id, idToName[socket.id], idToName[randomSocket.id]);
@@ -42,7 +44,9 @@ var socketCommunication = (io) => {
                 }
                 games[playingRoom] = {
                     game: new Chess(),
-                    isOver: false
+                    isOver: false,
+                    white: idToName[idArray[randomNumber]],
+                    black:  idToName[idArray[1 - randomNumber]],
                 };
                 
             }
@@ -110,6 +114,7 @@ var socketCommunication = (io) => {
             io.to(currentRoom).emit("change", games[currentRoom].game.fen(), oldPos, moveObj, checkObj);
             if(games[currentRoom].game.game_over()){
                 games[currentRoom].isOver = true;
+                console.log(games[currentRoom].game.pgn());
                 if(games[currentRoom].game.in_checkmate()){
                     io.to(currentRoom).emit("checkmate", socket.id);
                 }else{
@@ -137,6 +142,7 @@ var socketCommunication = (io) => {
         socket.on("accept-draw", () => {
             var gameRoom = Array.from(socket.rooms)[1];
             games[gameRoom].isOver = true;
+            console.log(games[gameRoom].game.pgn());
             io.to(gameRoom).emit("draw-over");
         });
     
@@ -151,8 +157,53 @@ var socketCommunication = (io) => {
             }
             var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
             games[gameRoom].isOver = true;
-            opponentSocket.emit("game-over", "resignation", opponentSocket.id);
-            socket.emit("game-over", "resignation", opponentSocket.id);
+            console.log(games[gameRoom].game.pgn())
+            opponentSocket.emit("game-over", "resignation", opponentSocket.id, socket.id);
+            socket.emit("game-over", "resignation", opponentSocket.id, socket.id);
+        });
+
+        socket.on("abandonment-update", (myStatus, winner, loser) => {
+            var username = idToName[winner];
+            var oppUsername = idToName[loser];
+            client.connect(url, (err, db) => {
+                if (err) throw err;
+                var dbo = db.db("point-chess");
+                var query = {username: username};
+
+                dbo.collection("ratings").findOne(query, (err, ratingObj) => {
+                    if (err) throw err;
+                    var player = ratings.makePlayer(ratingObj.rating, ratingObj.rd, ratingObj.vol);
+                    dbo.collection("ratings").findOne({username: oppUsername}, (err, obj) => {
+                        if (err) throw err;
+                        console.log("made it here");
+                        var opp = ratings.makePlayer(obj.rating, obj.rd, obj.vol);
+                        ratings.updateRatings([[player, opp, myStatus]]);
+                        var myObj = {
+                            username: ratingObj.username,
+                            rating: Math.floor(player.getRating()),
+                            rd: player.getRd(),
+                            vol: player.getVol()
+                        };
+                        var oppObj = {
+                            username: obj.username,
+                            rating: Math.floor(opp.getRating()),
+                            rd: opp.getRd(),
+                            vol: opp.getVol()
+                        };
+                        socket.emit("new-ratings", myObj, oppObj);
+                        client.connect(url, (err, db) => {
+                            if (err) throw err;
+                            var dbo = db.db("point-chess");
+                            var filter = {username: idToName[loser]};
+                            dbo.collection("ratings").updateOne(filter, {$set : oppObj}, (err, result) => {
+                                if (err) throw err;
+                                console.log("Quitter's rating stored.");
+                                db.close();
+                            });
+                        });
+                    });
+                });
+            });
         });
 
         socket.on("update-ratings", (myStatus) => {
@@ -227,7 +278,8 @@ var socketCommunication = (io) => {
                     var opponentSocket = io.sockets.sockets.get(playersInRoom[i]);
                     if(!games[roomLeft].isOver){
                         games[roomLeft].isOver = true;
-                        opponentSocket.emit("game-over", "abandonment", opponentSocket.id);
+                        console.log(games[roomLeft].game.pgn())
+                        opponentSocket.emit("game-over", "abandonment", opponentSocket.id, socket.id);
                         console.log("A player left their game.");
                     }
                     

@@ -91,7 +91,7 @@ socket.on("rating", (rating, elementId) => {
     document.getElementById(elementId).innerHTML += ratingString;
 })
 
-socket.on("game-over", (reason, winner) => {
+socket.on("game-over", (reason, winner, loser) => {
     var endMessage = "";
     var myStatus;
     if(reason == "abandonment"){
@@ -120,8 +120,12 @@ socket.on("game-over", (reason, winner) => {
     board = Chessboard("board", {position: board.fen(), draggable: false, orientation : board.orientation()});
     var messageDiv = document.getElementById("message");
     messageDiv.innerHTML = endMessage;
+    if (reason != "abandonment"){
+        hideButtons(myStatus);
+    }else{
+        specialAbandonbment(myStatus, winner, loser);
+    }
     
-    hideButtons(myStatus);
 
 });
 
@@ -208,6 +212,16 @@ let hideButtons = (myStatus) => {
     resignBtn.style.visibility = "hidden";
 
     socket.emit("update-ratings", myStatus);
+}
+
+let specialAbandonbment = (myStatus, winner, loser) => {
+    var drawBtn = document.getElementById("draw_btn");
+    var resignBtn = document.getElementById("resign_btn");
+
+    drawBtn.style.visibility = "hidden";
+    resignBtn.style.visibility = "hidden";
+
+    socket.emit("abandonment-update", myStatus, winner, loser);
 }
 
 let showButtons = () => {
