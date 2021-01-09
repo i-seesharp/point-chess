@@ -180,9 +180,34 @@ var socketCommunication = (io) => {
                         console.log("made it here");
                         var opp = ratings.makePlayer(obj.rating, obj.rd, obj.vol);
                         ratings.updateRatings([[player, opp, myStatus]]);
-                        socket.emit("new-ratings", Math.floor(player.getRating()), Math.floor(opp.getRating()));
+                        var myObj = {
+                            username: ratingObj.username,
+                            rating: Math.floor(player.getRating()),
+                            rd: player.getRd(),
+                            vol: player.getVol()
+                        };
+                        var oppObj = {
+                            username: obj.username,
+                            rating: Math.floor(opp.getRating()),
+                            rd: opp.getRd(),
+                            vol: opp.getVol()
+                        };
+                        socket.emit("new-ratings", myObj, oppObj);
                         db.close();
                     });
+                });
+            });
+        });
+
+        socket.on("db-rating", (myRating) => {
+            client.connect(url, (err, db) => {
+                if (err) throw err;
+                var dbo = db.db("point-chess");
+                var filter = {username: myRating.username};
+
+                dbo.collection("ratings").updateOne(filter, {$set : myRating}, (err, result) => {
+                    if (err) throw err;
+                    db.close();
                 });
             });
         });

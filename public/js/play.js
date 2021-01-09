@@ -178,8 +178,26 @@ socket.on("draw-over", () => {
 });
 
 socket.on("new-ratings", (myRating, oppRating) => {
-    console.log("My New Rating :", myRating);
-    console.log("Opponent New Rating :", oppRating);
+    console.log("My New Rating :", Math.floor(myRating.rating));
+    console.log("Opponent New Rating :", Math.floor(oppRating.rating));
+
+    var myName = document.getElementById("my-name");
+    var oppName = document.getElementById("opponent-name");
+    var len = myName.innerHTML.length;
+    for(var i = 0; i < len; i++){
+        if(myName.innerHTML[len - 1 - i] == "("){
+            break;
+        }
+    }
+    myName.innerHTML = myName.innerHTML.slice(0, len - i) + myRating.rating + ")";
+    var len = oppName.innerHTML.length;
+    for(var i = 0; i < len; i++){
+        if(oppName.innerHTML[len - 1 - i] == "("){
+            break;
+        }
+    }
+    oppName.innerHTML = oppName.innerHTML.slice(0, len - i) + oppRating.rating + ")";
+    socket.emit("db-rating", myRating);
 })
 
 let hideButtons = (myStatus) => {
