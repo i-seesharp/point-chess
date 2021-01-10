@@ -197,7 +197,7 @@ var socketCommunication = (io) => {
                             var filter = {username: idToName[loser]};
                             dbo.collection("ratings").updateOne(filter, {$set : oppObj}, (err, result) => {
                                 if (err) throw err;
-                                console.log("Quitter's rating stored.");
+                                
                                 db.close();
                             });
                         });
